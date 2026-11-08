@@ -3,6 +3,7 @@ import Handlebars from 'handlebars/runtime'
 
 import profileTemplate from '../templates/profile.hbs'
 import noProfileTemplate from '../templates/noProfile.hbs'
+import tmpIcon from '../icons/tmp.png'
 
 Handlebars.registerHelper('ifEquals', function (arg1, arg2, options) {
   return (arg1 === arg2) ? options.fn(this) : options.inverse(this)
@@ -12,7 +13,8 @@ Handlebars.registerHelper('ifNotEligible', function (arg1, options) {
   return arg1 <= 2.0 ? options.fn(this) : options.inverse(this)
 })
 
-const iconURL = browser.runtime.getURL('icons/tmp.png')
+// Inlined as a data: URL — Steam's CSP blocks chrome-extension:// images
+const iconURL = tmpIcon
 
 const init = () => {
   browser.runtime.sendMessage(

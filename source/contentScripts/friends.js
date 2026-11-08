@@ -2,12 +2,14 @@ import browser from 'webextension-polyfill'
 
 import friendTemplate from '../templates/friend.hbs'
 import inviteTemplate from '../templates/invite.hbs'
+import tmpIcon from '../icons/tmp.png'
 
 // Marks the blocks we have already processed (friends list is reloaded via ajax)
 const RENDERED_ATTR = 'data-tmp-helper'
 const WARNING_ID = 'tmp-helper-warning'
 
-const iconURL = browser.runtime.getURL('icons/tmp.png')
+// Inlined as a data: URL — Steam's CSP blocks chrome-extension:// images
+const iconURL = tmpIcon
 
 const init = () => {
   browser.runtime.sendMessage(

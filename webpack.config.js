@@ -65,6 +65,12 @@ module.exports = (_env, argv) => ({
       {
         test: /\.hbs$/,
         loader: 'handlebars-loader'
+      },
+      {
+        // Steam's CSP (default-src https: data: blob:) blocks chrome-extension:// images,
+        // so icons used on Steam pages are inlined as data: URLs
+        test: /\.png$/,
+        type: 'asset/inline'
       }
     ]
   }

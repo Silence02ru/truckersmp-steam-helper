@@ -20,11 +20,11 @@
     }
   },
   "icons": {
-    "256": "icons/icon256.png",
-    "128": "icons/icon128.png",
-    "48": "icons/icon48.png",
+    "16": "icons/icon16.png",
     "24": "icons/icon24.png",
-    "16": "icons/icon16.png"
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png",
+    "256": "icons/icon256.png"
   },
   "permissions": [
     "storage",
@@ -101,16 +101,6 @@
       ],
       "css": [
         "css/friends.css"
-      ]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "icons/tmp.png"
-      ],
-      "matches": [
-        "*://steamcommunity.com/*"
       ]
     }
   ]
