@@ -1,6 +1,6 @@
 # CONTEXT — TruckersMP Steam Helper
 
-Браузерное расширение (Chrome / Firefox, **Manifest V3**), которое показывает данные TruckersMP об игроках прямо в Steam Community: в профиле и в списке друзей/приглашений.
+Форк расширения [cjmaxik/truckersmp-steam-helper](https://github.com/cjmaxik/truckersmp-steam-helper) (автор — CJMAXiK, в `readme.md` и `LICENSE.md` авторство сохраняется). Браузерное расширение (Chrome / Firefox, **Manifest V3**), которое показывает данные TruckersMP об игроках прямо в Steam Community: в профиле и в списке друзей/приглашений.
 
 ## Сборка
 
