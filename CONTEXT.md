@@ -44,7 +44,7 @@
 
 ## CI (`.github/workflows`)
 
-- `release.yml` — по расписанию (сб 10:00) / вручную: тег через `fregante/daily-version-action`, сборка на Node 22 отдельно для каждого браузера (`build:chrome` → `distribution`, `build:firefox` → `distribution-firefox`), публикация: Chrome — `chrome-webstore-upload-cli@3`, Firefox — `web-ext@8 sign --channel=listed`. Нужны секреты `EXTENSION_ID`, `CLIENT_ID`, `CLIENT_SECRET`, `REFRESH_TOKEN`, `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET`.
+- `release.yml` — по пушу тега `v*` (или вручную, `workflow_dispatch` с тегом): `npm ci`, версия манифеста из тега (`dot-json`), `npm run lint`, сборка, `package:chrome`/`package:firefox`, исходники через `git archive`; релиз на GitHub с архивами (`softprops/action-gh-release@v2`, `contents: write`) + artifact. Задача `submit` (Chrome `chrome-webstore-upload-cli@3`, Firefox `web-ext@8 sign --channel=listed` с исходниками) запускается только при переменной репозитория `PUBLISH_TO_STORES=true`; секреты `EXTENSION_ID`, `CLIENT_ID`, `CLIENT_SECRET`, `REFRESH_TOKEN`, `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET`. Расписания нет.
 - `codeql-analysis.yml` — CodeQL v3.
 
 ## Известное

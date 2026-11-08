@@ -86,7 +86,17 @@ Scripts:
 - `npm run package` — build and pack store-ready archives into `packages/`: Chrome `.zip`, Firefox `.zip` and the source `.zip` that addons.mozilla.org asks for (committed files only — commit first)
 - `npm run sign:firefox` — sign the Firefox build as unlisted (needs `WEB_EXT_API_KEY` / `WEB_EXT_API_SECRET`)
 
-The version lives in `source/manifest.json` (`YY.M.D`, same scheme as the original; the release workflow sets it from the daily tag).
+The version lives in `source/manifest.json` (`YY.M.D`, same scheme as the original).
+
+### Publishing a release
+Bump the version in `source/manifest.json`, commit, then push a tag with the same version:
+
+```bash
+git tag v26.11.8
+git push origin v26.11.8
+```
+
+GitHub Actions (`.github/workflows/release.yml`) builds both browsers, packs the Chrome, Firefox and source archives and publishes them on the [Releases](https://github.com/Silence02ru/truckersmp-steam-helper/releases) page. It can also be started manually from the Actions tab (*Release → Run workflow*). Store submission is a separate optional job: set the repository variable `PUBLISH_TO_STORES=true` and the secrets `EXTENSION_ID`, `CLIENT_ID`, `CLIENT_SECRET`, `REFRESH_TOKEN` (Chrome Web Store) and `WEB_EXT_API_KEY`, `WEB_EXT_API_SECRET` (addons.mozilla.org).
 
 API proxy (optional, for your own server): see [proxy/README.md](proxy/README.md). Project overview for contributors: [CONTEXT.md](CONTEXT.md).
 

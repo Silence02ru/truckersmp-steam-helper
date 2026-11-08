@@ -1,61 +1,98 @@
-env:
-  DIRECTORY: distribution
-
 name: Release
 
+# Publish a GitHub release with ready-to-install archives:
+#   git tag v26.11.8 && git push origin v26.11.8
+# or run manually from the Actions tab with a tag name.
 on:
-  workflow_dispatch: null
-  schedule:
-    - cron: 0 10 * * 6
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v26.11.8), created from the selected branch if missing'
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
-  version:
-    name: Compile a new version
-    outputs:
-      created: ${{ steps.daily-version.outputs.created }}
-      version: ${{ steps.daily-version.outputs.version }}
+  release:
+    name: Build and publish GitHub release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 20
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
-      - name: CI & install dependencies
-        run: npm ci || npm install
+      - name: Resolve version
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+(\.[0-9]+){0,3}$'; then
+            echo "Tag '$TAG' is not a valid extension version" >&2
+            exit 1
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Create tag (if necessary)
-        uses: fregante/daily-version-action@v1
-        id: daily-version
+      - name: Install dependencies
+        run: npm ci
 
-      - name: Release with changelog
-        uses: notlmn/release-with-changelog@v3
-        if: steps.daily-version.outputs.created
+      - name: Set manifest version from tag
+        run: npx --yes dot-json@1 source/manifest.json version "${{ steps.version.outputs.version }}"
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build and package
+        run: |
+          npm run build
+          npm run package:chrome
+          npm run package:firefox
+          mkdir -p packages
+          git archive --format=zip -o "packages/truckersmp-steam-helper-source-${{ steps.version.outputs.version }}.zip" HEAD
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          exclude: true
-          commit-template: '- {title} ← {hash}'
-          template: |
-            ### Changelog
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: TruckersMP Steam Helper ${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
+          files: packages/*.zip
+          body: |
+            Fork of [cjmaxik/truckersmp-steam-helper](https://github.com/cjmaxik/truckersmp-steam-helper) by CJMAXiK, updated to Manifest V3.
 
-            *To be determined*
+            **Downloads**
+            - `truckersmp-steam-helper-chrome-${{ steps.version.outputs.version }}.zip` — Chrome, Edge, Opera, Vivaldi, Yandex Browser: unzip into a folder you keep, then `chrome://extensions` → Developer mode → Load unpacked.
+            - `truckersmp-steam-helper-firefox-${{ steps.version.outputs.version }}.zip` — Firefox: `about:debugging` → Load Temporary Add-on (until restart). For a permanent install it must be signed — see README.
+            - `truckersmp-steam-helper-source-${{ steps.version.outputs.version }}.zip` — source code.
 
-            ### Commits
+            Full installation guide: [README](https://github.com/${{ github.repository }}#installation) · Changes: [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
 
-            {commits}
+      - name: Upload packages as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ steps.version.outputs.version }}
+          path: packages/*.zip
 
-            {range}
-
+  # Optional: publish to Chrome Web Store / addons.mozilla.org.
+  # Enabled only when the repository variable PUBLISH_TO_STORES is "true"
+  # and the store secrets are set (see README).
   submit:
     name: Submit to stores
-    needs: version
-    if: github.event_name == 'workflow_dispatch' || needs.version.outputs.created
+    needs: release
+    if: vars.PUBLISH_TO_STORES == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -65,39 +102,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download packages
+        uses: actions/download-artifact@v4
         with:
-          node-version: 22
-
-      - name: CI & install dependencies
-        run: npm ci || npm install
-
-      - name: Build
-        run: npm run build:${{ matrix.command }}
-
-      - name: Select output directory
-        run: |
-          if [ "${{ matrix.command }}" = "firefox" ]; then
-            echo "DIRECTORY=distribution-firefox" >> "$GITHUB_ENV"
-          fi
-
-      - name: Update extension meta
-        run: >-
-          npx dot-json@1 $DIRECTORY/manifest.json version ${{
-          needs.version.outputs.version }}
+          name: packages-${{ needs.release.outputs.version }}
+          path: packages
 
       - name: Submit
         run: |
+          VERSION="${{ needs.release.outputs.version }}"
           case ${{ matrix.command }} in
             chrome)
-              cd $DIRECTORY && npx chrome-webstore-upload-cli@3 upload --auto-publish
+              npx --yes chrome-webstore-upload-cli@3 upload --auto-publish --source "packages/truckersmp-steam-helper-chrome-$VERSION.zip"
               ;;
             firefox)
-              cd $DIRECTORY && npx web-ext@8 sign --channel=listed --api-key="$WEB_EXT_API_KEY" --api-secret="$WEB_EXT_API_SECRET"
+              mkdir ext && cd ext && unzip -q "../packages/truckersmp-steam-helper-firefox-$VERSION.zip"
+              npx --yes web-ext@8 sign --channel=listed --api-key="$WEB_EXT_API_KEY" --api-secret="$WEB_EXT_API_SECRET" \
+                --upload-source-code="../packages/truckersmp-steam-helper-source-$VERSION.zip"
               ;;
           esac
         env:
