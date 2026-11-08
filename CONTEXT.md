@@ -19,7 +19,7 @@
 | Файл | Назначение |
 |---|---|
 | `manifest.json` | MV3, общий исходник; ключ `background` перезаписывается при сборке под конкретный браузер (см. «Сборка»). Хосты в `host_permissions`. `web_accessible_resources` — `icons/tmp.png` для steamcommunity.com. Версия `0.0.0` подменяется в CI. |
-| `background.js` | Service worker. Обрабатывает сообщения `player` и `options` от content scripts. Запросы: TruckersMP API (`api.truckersmp.com/v2/player/<steamId>`), онлайн-статус (`traffic.krashnz.com/api/v2/user/<id>`), список игр Steam (`steamcommunity.com/profiles/<id>/games/?xml=1`, с `credentials: 'include'` — Steam отдаёт XML только залогиненным, иначе редирект на логин → `null`). Алярм `cache-cleanup` раз в минуту чистит просроченный кэш; при установке/обновлении кэш очищается. |
+| `background.js` | Service worker. Обрабатывает сообщения `player` и `options` от content scripts. Запросы: TruckersMP API (`api.truckersmp.com/v2/player/<steamId>`), онлайн-статус (`traffic.krashnz.com/api/v2/user/<id>`), список игр Steam (`steamcommunity.com/profiles/<id>/games/?xml=1`, с `credentials: 'include'` — Steam отдаёт XML только залогиненным, иначе редирект на логин → `null`). `fetchJson` при сетевой ошибке или не-JSON-ответе возвращает `{ error: true, descriptor }` (распознаёт страницу проверки Cloudflare «Just a moment»), профиль пишет эту причину в консоль. Алярм `cache-cleanup` раз в минуту чистит просроченный кэш; при установке/обновлении кэш очищается. |
 | `cache.js` | Кэш в `browser.storage.local` с префиксом `cache:` (в service worker нет `localStorage`). `readFromCache(key, cb, minutes)` — отдаёт запись, если она не истекла, иначе вызывает `cb`; `null`/`undefined` от `cb` не кэшируется. Также `removeFromCache`, `removeExpiredItems`, `clearCache` (удаляет только ключи `cache:`). |
 | `options-storage.js` | `webext-options-sync` (storage.sync): `showInProfile`, `showInFriends`, `showInInvites`, `showDiscord`, `showPatreon`, `friendsMaxWidth`. |
 | `options.html/.js/.css` | Страница настроек. «Clear cache» чистит кэш напрямую через `cache.js` и пишет статус рядом со ссылкой. |
@@ -38,6 +38,8 @@
 - `codeql-analysis.yml` — CodeQL v3.
 
 ## Известное
+
+- `api.truckersmp.com` закрыт Cloudflare: запросы с «браузерным» User-Agent без браузерного TLS-отпечатка (например, curl) получают 403 «Just a moment». Из настоящего браузера обычно проходит, но при блокировке в консоли будет `blocked by Cloudflare challenge`.
 
 - `web-ext lint distribution-firefox`: 0 ошибок; предупреждения только про `insertAdjacentHTML` (контент — экранированный вывод Handlebars).
 - Для новых публикаций на AMO Mozilla требует `browser_specific_settings.gecko.data_collection_permissions` — пока не задано.

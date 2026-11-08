@@ -76,7 +76,8 @@ const queryPlayer = (steamId, options) => {
     if (playerInfo && playerInfo.data && !playerInfo.data.error) {
       return renderProfile(playerInfo.data.response, playerInfo.online, options, playerInfo.timeout, playerInfo.games)
     }
-    console.warn('Something wrong with TruckersMP data! Looking for the games on Steam profile...', playerInfo)
+    const reason = playerInfo?.data?.descriptor ?? playerInfo?.data?.response ?? 'no response from the extension'
+    console.warn(`TruckersMP Steam Helper: no TruckersMP data (${reason}). Looking for the games on Steam profile...`)
 
     // Return 'no profile' template no matter what
     return renderNoProfile(playerInfo?.games, options)

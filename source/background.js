@@ -28,17 +28,28 @@ browser.runtime.onMessage.addListener((request, _sender) => {
 const delay = (key) => new Promise(resolve => setTimeout(resolve, key * 150 + Math.random() * 10))
 
 /**
- * Fetch JSON, returning null on network or parsing errors
+ * Fetch JSON. On network/HTTP/parsing problems returns an API-like error object
+ * ({ error: true, descriptor }) so callers and logs can tell what went wrong
  * @param {String} url
- * @returns {Promise<Object|null>}
+ * @returns {Promise<Object>}
  */
 const fetchJson = async (url) => {
+  let response
   try {
-    const response = await fetch(url)
-    return await response.json()
+    response = await fetch(url)
   } catch (error) {
     console.warn('Request failed:', url, error)
-    return null
+    return { error: true, descriptor: `Network error: ${error.message}` }
+  }
+
+  const text = await response.text()
+  try {
+    return JSON.parse(text)
+  } catch {
+    const blocked = /<title>Just a moment/i.test(text)
+    const descriptor = `HTTP ${response.status}: ` + (blocked ? 'blocked by Cloudflare challenge' : 'response is not JSON')
+    console.warn('Request failed:', url, descriptor)
+    return { error: true, descriptor }
   }
 }
 
