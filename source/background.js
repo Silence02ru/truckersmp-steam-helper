@@ -36,7 +36,9 @@ const delay = (key) => new Promise(resolve => setTimeout(resolve, key * 150 + Ma
 const fetchJson = async (url) => {
   let response
   try {
-    response = await fetch(url)
+    // Send cookies: api.truckersmp.com is behind a Cloudflare challenge, and the
+    // clearance cookie the user gets after passing it in a tab must reach the API
+    response = await fetch(url, { credentials: 'include' })
   } catch (error) {
     console.warn('Request failed:', url, error)
     return { error: true, descriptor: `Network error: ${error.message}` }
@@ -49,7 +51,7 @@ const fetchJson = async (url) => {
     const blocked = /<title>Just a moment/i.test(text)
     const descriptor = `HTTP ${response.status}: ` + (blocked ? 'blocked by Cloudflare challenge' : 'response is not JSON')
     console.warn('Request failed:', url, descriptor)
-    return { error: true, descriptor }
+    return { error: true, blocked, descriptor }
   }
 }
 

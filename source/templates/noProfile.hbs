@@ -1,8 +1,18 @@
 <div class="profile_customization">
   <div class="profile_customization_header">
-    <img src="{{ iconURL }}" width="16px" alt="Logo"> No TruckersMP account ¯\_(ツ)_/¯
+    <img src="{{ iconURL }}" width="16px" alt="Logo">
+    {{#if blocked}}TruckersMP data is unavailable{{else}}No TruckersMP account ¯\_(ツ)_/¯{{/if}}
   </div>
   <div class="profile_customization_block tmp_block">
+    {{#if blocked}}
+      <div class="customtext_showcase">
+        <div class="showcase_content_bg showcase_notes">
+          TruckersMP API asks for a Cloudflare security check.
+          <a href="{{ checkURL }}" target="_blank" rel="noopener noreferrer">Open the API page</a>,
+          wait until the check passes, then reload this page.
+        </div>
+      </div>
+    {{/if}}
     <div class="customtext_showcase">
       <div class="showcase_content_bg showcase_stats_row">
         {{#if count}}

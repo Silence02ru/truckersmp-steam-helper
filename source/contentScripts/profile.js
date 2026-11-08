@@ -80,19 +80,26 @@ const queryPlayer = (steamId, options) => {
     console.warn(`TruckersMP Steam Helper: no TruckersMP data (${reason}). Looking for the games on Steam profile...`)
 
     // Return 'no profile' template no matter what
-    return renderNoProfile(playerInfo?.games, options)
+    return renderNoProfile(playerInfo?.games, options, {
+      blocked: !!playerInfo?.data?.blocked,
+      checkURL: `https://api.truckersmp.com/v2/player/${steamId}`
+    })
   }).catch(error => console.error('TruckersMP Steam Helper:', error))
 }
 
 /**
- * Render block for not registered user
+ * Render block for not registered user (or when TruckersMP API is behind a Cloudflare check)
  * @param {Object} games
  * @param {Object} options
+ * @param {Object} status
+ * @param {Boolean} status.blocked TruckersMP API returned a Cloudflare challenge
+ * @param {String} status.checkURL URL to open to pass the challenge
  */
-const renderNoProfile = (games, options) => {
+const renderNoProfile = (games, options, status = {}) => {
   const template = noProfileTemplate({
     ...games,
     ...options,
+    ...status,
     iconURL
   })
 

@@ -47,6 +47,20 @@ const warningMessage = () => {
 }
 
 /**
+ * Replace the warning with a Cloudflare check hint (TruckersMP API is blocking requests)
+ * @param {String} steamId Any Steam ID to build the API page link
+ */
+const blockedMessage = (steamId) => {
+  const warning = document.getElementById(WARNING_ID)
+  if (!warning || warning.hasAttribute('data-blocked')) return
+
+  warning.setAttribute('data-blocked', '')
+  warning.innerHTML = `<img src="${iconURL}" alt="Icon"> TruckersMP API asks for a Cloudflare security check. ` +
+    `<a href="https://api.truckersmp.com/v2/player/${steamId}" target="_blank" rel="noopener noreferrer">Open the API page</a>, ` +
+    'wait until the check passes, then reload this page.'
+}
+
+/**
  * Check Steam ID correctness
  * @param {String} steamId
  * @return {Boolean}
@@ -79,6 +93,8 @@ const render = (mainSelector, targetSelector, template, key) => {
     let player = null
     if (playerInfo && playerInfo.data && !playerInfo.data.error) {
       player = playerInfo.data.response
+    } else if (playerInfo?.data?.blocked) {
+      blockedMessage(steamId)
     }
 
     const blockContent = mainSelector.querySelector(targetSelector)
