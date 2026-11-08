@@ -9,7 +9,7 @@
 - Манифест подгоняется под браузер при копировании (`transformManifest` в `webpack.config.js`): Chrome — `background.service_worker`, без `browser_specific_settings`; Firefox — `background.scripts`, без `minimum_chrome_version`. Chrome считает `background.scripts` в MV3 ошибкой, поэтому общий манифест не годится.
 - `npm run lint` — ESLint 10 + neostandard, конфиг `eslint.config.js` (flat config). `npm run lint:firefox` — линтер Mozilla (`web-ext lint`).
 - Упаковка: `npm run package` → `packages/` (в git не хранится): `truckersmp-steam-helper-chrome-<версия>.zip`, `…-firefox-<версия>.zip` (`web-ext build`) и `…-source-<версия>.zip` (`scripts/package-source.mjs`, `git archive HEAD` — только закоммиченное). `npm run sign:firefox` — подпись Firefox-сборки как unlisted (env `WEB_EXT_API_KEY`/`WEB_EXT_API_SECRET`), подписанный `.xpi` в `packages/`.
-- Версия — в `source/manifest.json`, схема `ГГ.М.Д` (сейчас `26.11.8`); CI при релизе подставляет версию из дневного тега.
+- Версия — в `source/manifest.json`, схема `ГГ.М.Д` (сейчас `26.11.9`); CI при релизе подставляет версию из дневного тега.
 - Сборщик — webpack 5 (`webpack.config.js`). Babel не используется: целевые браузеры (Chrome/Firefox 121+) понимают современный JS.
   - Entry: `background`, `options`, `profile`, `friends`.
   - `copy-webpack-plugin` копирует из `source/` всё, кроме `*.js` и `templates/`, плюс `chota.min.css` из `node_modules` в `css/` (CSS страницы настроек — локально, без CDN).

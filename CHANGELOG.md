@@ -1,6 +1,8 @@
 # Changelog
 
-## 2026-11-08 (10)
+## 2026-11-08 (10) · v26.11.9
+
+- Версия `26.11.9`, релиз на GitHub по тегу `v26.11.9`.
 
 ### Исправления
 - Иконка TruckersMP не отображалась на страницах Steam (битая картинка «Icon» в «Друзьях» и в профиле). Steam теперь отдаёт CSP `default-src blob: data: https: …`, и картинки `chrome-extension://…` блокируются. Иконка `icons/tmp.png` встраивается в контент-скрипты как `data:`-URL (webpack `asset/inline`); `web_accessible_resources` из манифеста убран как ненужный.
