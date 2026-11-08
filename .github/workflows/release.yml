@@ -77,7 +77,13 @@ jobs:
         run: npm ci || npm install
 
       - name: Build
-        run: npm run build --if-present
+        run: npm run build:${{ matrix.command }}
+
+      - name: Select output directory
+        run: |
+          if [ "${{ matrix.command }}" = "firefox" ]; then
+            echo "DIRECTORY=distribution-firefox" >> "$GITHUB_ENV"
+          fi
 
       - name: Update extension meta
         run: >-

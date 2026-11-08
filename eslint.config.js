@@ -3,7 +3,7 @@ const globals = require('globals')
 
 module.exports = [
   ...neostandard({
-    ignores: ['distribution/**', 'node_modules/**']
+    ignores: ['distribution/**', 'distribution-firefox/**', 'node_modules/**']
   }),
   {
     files: ['source/**/*.js'],

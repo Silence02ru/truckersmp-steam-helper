@@ -1,5 +1,6 @@
 node_modules
 distribution
+distribution-firefox
 
 # Idea files
 /.idea/

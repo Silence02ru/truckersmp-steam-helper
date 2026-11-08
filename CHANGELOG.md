@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-08 (2)
+
+### Исправления
+- Chrome не загружал расширение с ошибкой `'background.scripts' requires manifest version of 2 or lower`. Сборка теперь делает отдельные манифесты: `npm run build:chrome` → `distribution/` (service worker), `npm run build:firefox` → `distribution-firefox/` (background scripts). `npm run build` собирает обе. CI собирает и публикует каждую версию из своей папки.
+
 ## 2026-11-08
 
 ### Обновление

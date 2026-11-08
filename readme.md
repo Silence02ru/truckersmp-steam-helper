@@ -36,13 +36,13 @@
 
 ## For Developers
 Install `Node.js` and `npm`, run `npm install` in the project's root folder.
-Use `distribution` folder as the extracted extension path.
+Use `distribution` (Chrome) or `distribution-firefox` (Firefox) folder as the extracted extension path.
 
 Requires Node.js 20+.
 
 Scripts:
 - `npm run watch` - for development (you need to update the extension manually to refresh content scripts)
-- `npm run build` - for the testing
+- `npm run build` - production build for both browsers (`build:chrome` / `build:firefox` for one)
 - `npm run lint` - ESLint (neostandard)
 
 Note: the games/playtime check uses the Steam games XML, which Steam serves only to signed-in users, so you must be logged in to Steam Community in the same browser.
