@@ -1,10 +1,11 @@
+<!doctype html>
 <html lang="en">
 
 <head>
   <meta charset="utf-8">
   <title>Options</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="stylesheet" href="https://unpkg.com/chota@latest">
+  <link rel="stylesheet" href="css/chota.min.css">
   <link rel="stylesheet" href="options.css">
 </head>
 
@@ -22,7 +23,7 @@
       <label>
         <input type="checkbox" name="showInFriends">
         Friends
-      </label> Friends <small>(including Blocked, Recently Played With)</small>
+      </label> <small>(including Blocked, Recently Played With)</small>
     </div>
     <div>
       <label>
@@ -74,11 +75,10 @@
     TruckersMP Forum post
   </a>
   </p>
-  <p><a href="#" id="clear-cache">Clear cache</a></p>
+  <p><a href="#" id="clear-cache">Clear cache</a> <small id="clear-cache-status"></small></p>
 </div>
 
-</body>
-<script src="browser-polyfill.min.js"></script>
 <script src="options.js"></script>
+</body>
 
 </html>

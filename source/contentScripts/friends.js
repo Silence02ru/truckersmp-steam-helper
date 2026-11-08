@@ -1,5 +1,13 @@
-const friendTemplate = require('../templates/friend.hbs')
-const inviteTemplate = require('../templates/invite.hbs')
+import browser from 'webextension-polyfill'
+
+import friendTemplate from '../templates/friend.hbs'
+import inviteTemplate from '../templates/invite.hbs'
+
+// Marks the blocks we have already processed (friends list is reloaded via ajax)
+const RENDERED_ATTR = 'data-tmp-helper'
+const WARNING_ID = 'tmp-helper-warning'
+
+const iconURL = browser.runtime.getURL('icons/tmp.png')
 
 const init = () => {
   browser.runtime.sendMessage(
@@ -20,20 +28,22 @@ const init = () => {
     }
 
     if (options.friendsMaxWidth) {
-      const pageContent = document.querySelectorAll('div.pagecontent')
-      if (pageContent.length) pageContent.forEach(element => element.classList.add('max_width'))
+      document.querySelectorAll('div.pagecontent').forEach(element => element.classList.add('max_width'))
     }
-  })
+  }).catch(error => console.error('TruckersMP Steam Helper:', error))
 }
 
 /**
  * Insert a warning message
  */
 const warningMessage = () => {
-  const template = `<div class="search_results_none">Due to <img src="${browser.extension.getURL('icons/tmp.png')}" alt="Icon"> API limits, new data might load with a noticeable delay. Be patient 😉 --CJMAXiK</div>`
-  const titleBarSelector = document.querySelectorAll('div.profile_friends.title_bar')
+  if (document.getElementById(WARNING_ID)) return
 
-  if (titleBarSelector) titleBarSelector[0].insertAdjacentHTML('beforebegin', template)
+  const titleBar = document.querySelector('div.profile_friends.title_bar')
+  if (!titleBar) return
+
+  const template = `<div id="${WARNING_ID}" class="search_results_none">Due to <img src="${iconURL}" alt="Icon"> API limits, new data might load with a noticeable delay. Be patient 😉 --CJMAXiK</div>`
+  titleBar.insertAdjacentHTML('beforebegin', template)
 }
 
 /**
@@ -42,7 +52,7 @@ const warningMessage = () => {
  * @return {Boolean}
  */
 const isSteamId = (steamId) => {
-  return (steamId && steamId.length === 17 && steamId.startsWith('765611'))
+  return !!(steamId && steamId.length === 17 && steamId.startsWith('765611'))
 }
 
 /**
@@ -55,7 +65,8 @@ const isSteamId = (steamId) => {
 const render = (mainSelector, targetSelector, template, key) => {
   const steamId = mainSelector.getAttribute('data-steamid')
 
-  if (!isSteamId(steamId)) return
+  if (!isSteamId(steamId) || mainSelector.hasAttribute(RENDERED_ATTR)) return
+  mainSelector.setAttribute(RENDERED_ATTR, '')
 
   browser.runtime.sendMessage(
     {
@@ -66,17 +77,23 @@ const render = (mainSelector, targetSelector, template, key) => {
     }
   ).then((playerInfo) => {
     let player = null
-    if (playerInfo.data && !playerInfo.data.error) {
+    if (playerInfo && playerInfo.data && !playerInfo.data.error) {
       player = playerInfo.data.response
     }
 
     const blockContent = mainSelector.querySelector(targetSelector)
+    if (!blockContent) return
+
     blockContent.insertAdjacentHTML('beforeend', template(
       {
         ...player,
-        iconURL: browser.extension.getURL('icons/tmp.png')
+        iconURL
       }
     ))
+  }).catch(error => {
+    // Allow another attempt on the next ajax navigation
+    mainSelector.removeAttribute(RENDERED_ATTR)
+    console.error('TruckersMP Steam Helper:', error)
   })
 }
 

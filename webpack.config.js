@@ -1,13 +1,9 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
 const path = require('path')
-const SizePlugin = require('size-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
-const TerserPlugin = require('terser-webpack-plugin')
-const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
-module.exports = {
-  devtool: 'source-map',
-  stats: 'errors-only',
+module.exports = (_env, argv) => ({
+  devtool: argv.mode === 'production' ? false : 'cheap-source-map',
+  stats: 'errors-warnings',
   entry: {
     background: './source/background',
     options: './source/options',
@@ -16,47 +12,32 @@ module.exports = {
   },
   output: {
     path: path.join(__dirname, 'distribution'),
-    filename: '[name].js'
+    filename: '[name].js',
+    clean: true
   },
   plugins: [
-    new SizePlugin(),
-    new CopyWebpackPlugin([
-      {
-        from: '**/*',
-        context: 'source',
-        ignore: ['*.js']
-      },
-      {
-        from: 'node_modules/webextension-polyfill/dist/browser-polyfill.min.js'
-      }
-    ]),
-    new CleanWebpackPlugin({
-      verbose: true,
-      cleanStaleWebpackAssets: false
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: '**/*',
+          context: 'source',
+          globOptions: {
+            ignore: ['**/*.js', '**/templates/**']
+          }
+        },
+        {
+          from: 'node_modules/chota/dist/chota.min.css',
+          to: 'css/chota.min.css'
+        }
+      ]
     })
   ],
   module: {
     rules: [
       {
-        test: /\.js$/,
-        exclude: /node_modules/,
-        loader: 'babel-loader'
-      },
-      {
         test: /\.hbs$/,
         loader: 'handlebars-loader'
       }
     ]
-  },
-  optimization: {
-    minimize: true,
-    minimizer: [
-      new TerserPlugin({
-        terserOptions: {
-          mangle: true,
-          compress: true
-        }
-      })
-    ]
   }
-}
+})

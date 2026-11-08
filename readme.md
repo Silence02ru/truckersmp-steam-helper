@@ -5,7 +5,7 @@
 ---
 
 # Deprecation notice
-**This extension is now fully-featured and complete, no updates will be performed. It should work as long as Chrome v2 manifest is available.**
+**The original extension is feature-complete and no longer maintained upstream. This fork migrates it to Manifest V3 (Chrome 121+, Firefox 121+) so it keeps working after Chrome dropped Manifest V2.**
 
 ---
 
@@ -34,13 +34,18 @@
 
 *This extension is inspired by TruckersMP Helper and internal TruckersMP Team tools.*
 
-## For Delevopers
+## For Developers
 Install `Node.js` and `npm`, run `npm install` in the project's root folder.
 Use `distribution` folder as the extracted extension path.
+
+Requires Node.js 20+.
 
 Scripts:
 - `npm run watch` - for development (you need to update the extension manually to refresh content scripts)
 - `npm run build` - for the testing
+- `npm run lint` - ESLint (neostandard)
+
+Note: the games/playtime check uses the Steam games XML, which Steam serves only to signed-in users, so you must be logged in to Steam Community in the same browser.
 
 ## License
 This browser extension is released under [MIT license](LICENSE.md).

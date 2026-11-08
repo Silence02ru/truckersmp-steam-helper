@@ -1,3 +1,5 @@
+import browser from 'webextension-polyfill'
+
 import optionsStorage from './options-storage.js'
 import { clearCache } from './cache.js'
 
@@ -11,15 +13,24 @@ optionsStorage.syncForm('#options-form').catch(e => console.error(e))
 const links = document.getElementsByClassName('openURL')
 Array.from(links).forEach((element) => {
   element.addEventListener('click', (event) => {
-    const url = event.target.getAttribute('data-href')
+    event.preventDefault()
+    const url = event.currentTarget.getAttribute('data-href')
     if (url) browser.tabs.create({ url })
   })
 })
 
 // Clear cache link
-document.getElementById('clear-cache').addEventListener('click', (event) => {
-  clearCache()
-  browser.extension.getBackgroundPage().alert('Cache cleared!')
+document.getElementById('clear-cache').addEventListener('click', async (event) => {
+  event.preventDefault()
+  const status = document.getElementById('clear-cache-status')
+
+  try {
+    await clearCache()
+    status.textContent = 'Cache cleared!'
+  } catch (error) {
+    console.error(error)
+    status.textContent = 'Failed to clear the cache'
+  }
 })
 
-document.getElementById('version').innerHTML = browser.runtime.getManifest().version
+document.getElementById('version').textContent = browser.runtime.getManifest().version

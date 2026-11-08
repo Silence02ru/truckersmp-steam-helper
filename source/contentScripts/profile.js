@@ -1,4 +1,9 @@
-const Handlebars = require('handlebars/runtime')
+import browser from 'webextension-polyfill'
+import Handlebars from 'handlebars/runtime'
+
+import profileTemplate from '../templates/profile.hbs'
+import noProfileTemplate from '../templates/noProfile.hbs'
+
 Handlebars.registerHelper('ifEquals', function (arg1, arg2, options) {
   return (arg1 === arg2) ? options.fn(this) : options.inverse(this)
 })
@@ -7,8 +12,7 @@ Handlebars.registerHelper('ifNotEligible', function (arg1, options) {
   return arg1 <= 2.0 ? options.fn(this) : options.inverse(this)
 })
 
-const profileTemplate = require('../templates/profile.hbs')
-const noProfileTemplate = require('../templates/noProfile.hbs')
+const iconURL = browser.runtime.getURL('icons/tmp.png')
 
 const init = () => {
   browser.runtime.sendMessage(
@@ -24,7 +28,16 @@ const init = () => {
     }
 
     if (options.showInProfile) queryPlayer(steamId, options)
-  })
+  }).catch(error => console.error('TruckersMP Steam Helper:', error))
+}
+
+/**
+ * Check Steam ID correctness
+ * @param {String} steamId
+ * @return {Boolean}
+ */
+const isSteamId = (steamId) => {
+  return !!(steamId && steamId.length === 17 && steamId.startsWith('765611'))
 }
 
 /**
@@ -32,16 +45,14 @@ const init = () => {
  * @return {String|null} SteamID
  */
 const getSteamId = () => {
-  if (document.querySelector('#reportAbuseModal')) {
-    return document.querySelector('input[name=abuseID]').value
-  } else {
-    const profileData = document.querySelector('div.responsive_page_template_content > script').innerText
-    const regex = /"steamid":"(\d{17})"/gm
+  const abuseId = document.querySelector('#reportAbuseModal input[name=abuseID]')?.value
+  if (isSteamId(abuseId)) return abuseId
 
-    const data = regex.exec(profileData)
-    if (data !== null && data[1].length === 17 && data[1].startsWith('765611')) {
-      return data[1].toString()
-    }
+  // Profile data is embedded into one of the inline scripts (g_rgProfileData)
+  const regex = /"steamid":"(\d{17})"/
+  for (const script of document.querySelectorAll('script:not([src])')) {
+    const data = regex.exec(script.textContent)
+    if (data !== null && isSteamId(data[1])) return data[1]
   }
 
   return null
@@ -56,20 +67,20 @@ const queryPlayer = (steamId, options) => {
   browser.runtime.sendMessage(
     {
       query: 'player',
-      steamId: steamId,
+      steamId,
       key: 0,
       withGames: true,
       withMap: true
     }
   ).then((playerInfo) => {
-    if (playerInfo.data && !playerInfo.data.error) {
+    if (playerInfo && playerInfo.data && !playerInfo.data.error) {
       return renderProfile(playerInfo.data.response, playerInfo.online, options, playerInfo.timeout, playerInfo.games)
     }
     console.warn('Something wrong with TruckersMP data! Looking for the games on Steam profile...', playerInfo)
 
     // Return 'no profile' template no matter what
-    return renderNoProfile(playerInfo.games, options)
-  })
+    return renderNoProfile(playerInfo?.games, options)
+  }).catch(error => console.error('TruckersMP Steam Helper:', error))
 }
 
 /**
@@ -81,7 +92,7 @@ const renderNoProfile = (games, options) => {
   const template = noProfileTemplate({
     ...games,
     ...options,
-    iconURL: browser.extension.getURL('icons/tmp.png')
+    iconURL
   })
 
   insertTemplate(template)
@@ -92,7 +103,7 @@ const renderNoProfile = (games, options) => {
  * @param {Object} player
  * @param {Boolean} online
  * @param {Object} options
- * @param {string} timeout
+ * @param {Number} timeout
  * @param {Object} games
  */
 const renderProfile = (player, online, options, timeout, games) => {
@@ -100,17 +111,13 @@ const renderProfile = (player, online, options, timeout, games) => {
     player = currentTier(player)
   }
 
-  timeout = new Date(timeout).toLocaleString()
-
-  console.log(games)
-
   const template = profileTemplate({
     ...player,
     online,
     ...options,
-    timeout,
+    timeout: timeout ? new Date(timeout).toLocaleString() : null,
     ...games,
-    iconURL: browser.extension.getURL('icons/tmp.png')
+    iconURL
   })
 
   insertTemplate(template)
@@ -121,6 +128,9 @@ const renderProfile = (player, online, options, timeout, games) => {
  * @param {String} template
  */
 const insertTemplate = (template) => {
+  // Already rendered (e.g. the script was injected twice)
+  if (document.querySelector('div.profile_leftcol div.tmp_block')) return
+
   const fallbackSelector = 'div.profile_leftcol'
   const mainSelector = fallbackSelector + ' > :first-child'
   let mainTarget = 'beforebegin'
@@ -129,6 +139,11 @@ const insertTemplate = (template) => {
   if (!selector) {
     selector = document.querySelector(fallbackSelector)
     mainTarget = 'afterbegin'
+  }
+
+  if (!selector) {
+    console.log('Profile layout is not recognized, nothing to render.')
+    return
   }
 
   selector.insertAdjacentHTML(mainTarget, template)
@@ -143,6 +158,8 @@ const insertTemplate = (template) => {
  * @return {*}
  */
 const currentTier = (player) => {
+  if (!player.patreon) return player
+
   let currentTier
 
   switch (player.patreon.tierId) {
@@ -159,7 +176,7 @@ const currentTier = (player) => {
       break
 
     default:
-      currentTier = '$' + player.patreon.currentPledge / 100
+      currentTier = player.patreon.currentPledge ? '$' + player.patreon.currentPledge / 100 : null
       break
   }
   player.patreon.currentTier = currentTier

@@ -1,25 +1,23 @@
-import optionsStorage from './options-storage.js'
-import { clearCache, readFromCache, removeExpiredItems, removeFromCache } from './cache'
-
+import browser from 'webextension-polyfill'
 import { XMLParser } from 'fast-xml-parser'
 
-const TIMEOUT = 1.0
+import optionsStorage from './options-storage.js'
+import { clearCache, readFromCache, removeExpiredItems, removeFromCache } from './cache.js'
+
+const CLEANUP_ALARM = 'cache-cleanup'
+const CLEANUP_PERIOD = 1.0 // minutes
 
 // Listeners for a content scripts
 browser.runtime.onMessage.addListener((request, _sender) => {
-  let response = null
-
   switch (request.query) {
     case 'player':
-      response = queryPlayer(request)
-      break
+      return queryPlayer(request)
 
     case 'options':
-      response = queryOptions()
-      break
+      return queryOptions()
   }
 
-  return Promise.resolve(response)
+  return undefined
 })
 
 /**
@@ -28,6 +26,21 @@ browser.runtime.onMessage.addListener((request, _sender) => {
  * @return {Promise<Function>}
  */
 const delay = (key) => new Promise(resolve => setTimeout(resolve, key * 150 + Math.random() * 10))
+
+/**
+ * Fetch JSON, returning null on network or parsing errors
+ * @param {String} url
+ * @returns {Promise<Object|null>}
+ */
+const fetchJson = async (url) => {
+  try {
+    const response = await fetch(url)
+    return await response.json()
+  } catch (error) {
+    console.warn('Request failed:', url, error)
+    return null
+  }
+}
 
 /**
  * Return TruckersMP player data
@@ -42,19 +55,15 @@ const queryPlayer = async (request) => {
   const key = `player:${request.steamId}`
   const playerInfo = await readFromCache(key, async function () {
     await delay(request.key)
-    const response = await fetch(`https://api.truckersmp.com/v2/player/${request.steamId}`)
-
-    return await response.json()
+    return fetchJson(`https://api.truckersmp.com/v2/player/${request.steamId}`)
   })
 
   // Check if the user is not registered
   if (!playerInfo.data || playerInfo.data.error) {
-    removeFromCache(key)
-  } else {
+    await removeFromCache(key)
+  } else if (request.withMap && !playerInfo.data.response.banned) {
     // Grabbing map
-    if (request.withMap && !playerInfo.data.response.banned) {
-      playerInfo.online = await queryMap(playerInfo.data.response.id)
-    }
+    playerInfo.online = await queryMap(playerInfo.data.response.id)
   }
 
   // Grabbing games
@@ -81,23 +90,45 @@ const cacheBusting = () => {
  * Check user games
  * @param {Object} request Data object
  * @param {String} request.steamId Steam ID
- * @returns {Object}
+ * @returns {Object|null}
  */
 const queryGames = async (request) => {
   const key = `games:${request.steamId}`
   const gamesData = await readFromCache(key, async function () {
-    // Requesting the XML data
-    const response = await fetch(`https://steamcommunity.com/profiles/${request.steamId}/games/?xml=1&v=${cacheBusting()}`)
-    const data = await response.text()
+    // Requesting the XML data. Steam requires a signed-in session for this endpoint now
+    let data
+    try {
+      const response = await fetch(
+        `https://steamcommunity.com/profiles/${request.steamId}/games/?xml=1&v=${cacheBusting()}`,
+        { credentials: 'include' }
+      )
+      data = await response.text()
+      if (!response.ok || !data.trimStart().startsWith('<?xml')) {
+        console.warn('Steam games list is unavailable (signed out?)')
+        return null
+      }
+    } catch (error) {
+      console.warn('Steam games request failed:', error)
+      return null
+    }
 
     // Parsing XML data
     const parser = new XMLParser({
       ignoreDeclaration: true,
       ignorePiTags: true,
       processEntities: false,
-      parseTagValue: false
+      parseTagValue: false,
+      // A profile with a single game must still give us an array
+      isArray: (_name, jpath) => jpath === 'gamesList.games.game'
     })
-    const xmlDoc = parser.parse(data)
+
+    let xmlDoc
+    try {
+      xmlDoc = parser.parse(data)
+    } catch (error) {
+      console.warn('Steam games XML cannot be parsed:', error)
+      return null
+    }
 
     /**
      * @typedef Game Game object
@@ -105,14 +136,8 @@ const queryGames = async (request) => {
      * @param {String} game.appID
      */
 
-    /**
-     * Array of games
-     * @param {Object} xmlDoc
-     * @param {Game[]} xmlDoc.gamesList.games.game
-     */
-
-      // We only need games data
-    const gamesData = xmlDoc.gamesList.games.game ?? null
+    // We only need games data (missing for private or empty profiles)
+    const gamesList = xmlDoc?.gamesList?.games?.game ?? null
 
     // Games object for the template
     const games = {
@@ -123,22 +148,18 @@ const queryGames = async (request) => {
     }
 
     // Fallback if no games data
-    if (gamesData === null) {
+    if (!Array.isArray(gamesList) || !gamesList.length) {
       return games
     }
 
-    // Games count, 0 means we don't need to go further
-    games.count = gamesData.length
-    if (!games.count) {
-      return games
-    }
+    games.count = gamesList.length
 
-    gamesData.forEach(game => {
+    gamesList.forEach(game => {
       // Parse hoursOnRecord (if available)
       const gameTime = game.hoursOnRecord ? parseHours(game.hoursOnRecord) : 0
 
       // Grab hoursOnRecord for eligible games
-      switch (game.appID) {
+      switch (String(game.appID)) {
         case '227300':
           games.ets2 = gameTime
           break
@@ -161,34 +182,37 @@ const queryGames = async (request) => {
 /**
  * Parse hours, minding the comma sign
  * @param {String} hours
+ * @returns {Number}
  */
 function parseHours (hours) {
-  hours = hours.replaceAll(',', '')
-  return Number.parseFloat(hours)
+  const value = Number.parseFloat(String(hours).replaceAll(',', ''))
+  return Number.isNaN(value) ? 0 : value
 }
 
 /**
  * Check user online status
  * @param {string} id TruckersMP ID
- * @returns {Object}
+ * @returns {Promise<Boolean>}
  */
 const queryMap = async (id) => {
   const mapData = await readFromCache(`map:${id}`, async function () {
-    const response = await fetch(`https://traffic.krashnz.com/api/v2/user/${id}?v=${cacheBusting()}`)
-
-    return await response.json()
+    return fetchJson(`https://traffic.krashnz.com/api/v2/user/${id}?v=${cacheBusting()}`)
   }, 1)
 
-  return !!(!mapData.data.error && mapData.data.response.online)
+  return !!(mapData.data && !mapData.data.error && mapData.data.response?.online)
 }
 
-// Cache governor
+// Cache governor (the service worker may be restarted at any time, so keep the alarm idempotent)
 removeExpiredItems()
-browser.alarms.create({ periodInMinutes: TIMEOUT })
-browser.alarms.onAlarm.addListener(removeExpiredItems)
+browser.alarms.get(CLEANUP_ALARM).then(alarm => {
+  if (!alarm) browser.alarms.create(CLEANUP_ALARM, { periodInMinutes: CLEANUP_PERIOD })
+})
+browser.alarms.onAlarm.addListener(alarm => {
+  if (alarm.name === CLEANUP_ALARM) removeExpiredItems()
+})
 
 // Clear cache prematurely after an update
 browser.runtime.onInstalled.addListener(details => {
-  console.log(`Clearing the cache prematurely:`, details.reason)
+  console.log('Clearing the cache prematurely:', details.reason)
   clearCache()
 })
