@@ -79,7 +79,11 @@ const queryPlayer = (steamId, options) => {
       return renderProfile(playerInfo.data.response, playerInfo.online, options, playerInfo.timeout, playerInfo.games)
     }
     const reason = playerInfo?.data?.descriptor ?? playerInfo?.data?.response ?? 'no response from the extension'
-    console.warn(`TruckersMP Steam Helper: no TruckersMP data (${reason}). Looking for the games on Steam profile...`)
+    // "Player not found" is a normal API answer — log it as info so it does not land
+    // on the chrome://extensions errors page; warn only about real failures
+    const failed = !playerInfo?.data || playerInfo.data.blocked || /^(Network error|HTTP \d|Proxy:)/.test(reason)
+    const log = failed ? console.warn : console.info
+    log(`TruckersMP Steam Helper: no TruckersMP data (${reason}). Looking for the games on Steam profile...`)
 
     // Return 'no profile' template no matter what
     return renderNoProfile(playerInfo?.games, options, {
