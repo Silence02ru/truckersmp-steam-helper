@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-08 (8) · v26.11.8
+
+### Упаковка
+- Версия расширения `26.11.8` (схема `ГГ.М.Д`, как у оригинала). `homepage_url` → репозиторий форка.
+- Свой ID для Firefox: `truckersmp-steam-helper@silence24.ru` (прежний ID принадлежит оригинальному автору). Добавлено `data_collection_permissions: { required: ["websiteContent"] }` — обязательно для новых дополнений AMO; из-за него минимальная версия Firefox поднята до 140 (Android — 142).
+- Команды: `npm run package` — архивы для магазинов в `packages/` (Chrome, Firefox и исходники для проверки Mozilla), `npm run lint:firefox`, `npm run sign:firefox` (подпись Firefox-сборки как unlisted для установки у себя). Добавлен `web-ext` в devDependencies, `scripts/package-source.mjs`.
+- В «Друзьях» подсказка о блокировке собирается через DOM вместо `innerHTML` (замечание линтера Mozilla).
+
+### Документация
+- README: подробная ручная установка (готовый архив или сборка из исходников; Chrome/Edge/Opera/Vivaldi/Яндекс; Firefox временно и навсегда через подпись unlisted), описание команд упаковки и схемы версий.
+
 ## 2026-11-08 (7)
 
 ### Документация

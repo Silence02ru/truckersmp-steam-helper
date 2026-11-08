@@ -54,8 +54,13 @@ const blockedMessage = () => {
   if (!warning || warning.hasAttribute('data-blocked')) return
 
   warning.setAttribute('data-blocked', '')
-  warning.innerHTML = `<img src="${iconURL}" alt="Icon"> TruckersMP API blocks requests from the extension (Cloudflare check). ` +
-    'Set an API proxy in the extension options.'
+  const icon = document.createElement('img')
+  icon.src = iconURL
+  icon.alt = 'Icon'
+  warning.replaceChildren(
+    icon,
+    ' TruckersMP API blocks requests from the extension (Cloudflare check). Set an API proxy in the extension options.'
+  )
 }
 
 /**

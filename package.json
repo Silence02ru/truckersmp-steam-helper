@@ -6,7 +6,13 @@
     "build:firefox": "cross-env BROWSER=firefox webpack --mode=production",
     "watch": "webpack --mode=development --watch",
     "watch:firefox": "cross-env BROWSER=firefox webpack --mode=development --watch",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "package": "npm run build && npm run package:chrome && npm run package:firefox && npm run package:source",
+    "package:chrome": "web-ext build -s distribution -a packages -n truckersmp-steam-helper-chrome-{version}.zip -o",
+    "package:firefox": "web-ext build -s distribution-firefox -a packages -n truckersmp-steam-helper-firefox-{version}.zip -o",
+    "package:source": "node scripts/package-source.mjs",
+    "lint:firefox": "web-ext lint -s distribution-firefox",
+    "sign:firefox": "web-ext sign -s distribution-firefox -a packages --channel=unlisted"
   },
   "dependencies": {
     "chota": "^0.9.2",
@@ -22,6 +28,7 @@
     "globals": "^17.14.0",
     "handlebars-loader": "^1.7.3",
     "neostandard": "^0.14.1",
+    "web-ext": "^10.8.0",
     "webpack": "^5.112.2",
     "webpack-cli": "^7.3.1"
   }

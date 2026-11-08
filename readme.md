@@ -25,14 +25,40 @@ The store listings below belong to the **original** extension and may be outdate
 
 - [Chrome Web Store](https://chrome.google.com/webstore/detail/truckersmp-steam-helper/lodcclicinbifbajhlapkolpedcjgbme) · [Firefox Add-ons](https://addons.mozilla.org/addon/truckersmp-steam-helper/) · [TruckersMP forum topic](https://forum.truckersmp.com/index.php?/topic/102560-truckersmp-steam-helper/)
 
-To install **this fork**, build it and load it unpacked:
+This fork is not in the stores yet. Install it manually:
 
-1. Install [Node.js](https://nodejs.org/) 20+.
-2. In the project folder run `npm install`, then `npm run build`.
-3. **Chrome / Edge / Opera / Vivaldi:** open `chrome://extensions`, enable *Developer mode*, click *Load unpacked* and select the `distribution` folder.
-4. **Firefox:** open `about:debugging#/runtime/this-firefox`, click *Load Temporary Add-on…* and select `distribution-firefox/manifest.json`.
+### Get the files
 
-Be signed in to Steam Community in the same browser — Steam serves the games list (ETS2/ATS playtime) only to signed-in users.
+- **Ready-made archives:** `truckersmp-steam-helper-chrome-<version>.zip` / `truckersmp-steam-helper-firefox-<version>.zip` (from [Releases](https://github.com/Silence02ru/truckersmp-steam-helper/releases), or build them yourself — see below). Unzip the Chrome archive into a folder you will **keep** (the browser loads the extension from it).
+- **Or build from source:** install [Node.js](https://nodejs.org/) 20+, run `npm install` and `npm run build` in the project folder. Output: `distribution` (Chrome) and `distribution-firefox` (Firefox).
+
+### Chrome, Edge, Opera, Vivaldi, Yandex Browser
+
+1. Open `chrome://extensions` (Edge: `edge://extensions`, Opera: `opera://extensions`).
+2. Turn on **Developer mode**.
+3. Click **Load unpacked** and select the unzipped Chrome folder (or `distribution`) — the folder that contains `manifest.json`.
+4. To update: replace the folder contents with the new version and press ⟳ on the extension card.
+
+Chrome may show a "developer mode extensions" reminder on start — this is normal for manually installed extensions.
+
+### Firefox
+
+- **Temporary (until Firefox restarts):** open `about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → select `manifest.json` in `distribution-firefox` (or the Firefox `.zip` itself).
+- **Permanent:** Firefox installs only add-ons signed by Mozilla. Sign the build for yourself (free, not published in the catalog): create API keys at [addons.mozilla.org → Developer Hub → API keys](https://addons.mozilla.org/developers/addon/api/key/), then run
+
+  ```bash
+  npm run build:firefox
+  WEB_EXT_API_KEY=... WEB_EXT_API_SECRET=... npm run sign:firefox
+  ```
+
+  Windows PowerShell: `$env:WEB_EXT_API_KEY="..."; $env:WEB_EXT_API_SECRET="..."; npm run sign:firefox`
+
+  The signed `.xpi` appears in `packages/`. Open it in Firefox (drag into the window or *Add-ons → ⚙ → Install Add-on From File…*).
+
+### After installing
+
+- Be signed in to Steam Community in the same browser — Steam serves the games list (ETS2/ATS playtime) only to signed-in users.
+- Options: right-click the extension icon → **Options**. The *TruckersMP API proxy* field is pre-filled; clear it to disable the proxy.
 
 ## Screenshots
 ![Profile](/media/profile-registered.png)
@@ -56,7 +82,11 @@ Requires Node.js 20+. Run `npm install` in the project's root folder.
 Scripts:
 - `npm run build` — production build for both browsers: `distribution` (Chrome) and `distribution-firefox` (Firefox); `build:chrome` / `build:firefox` for one
 - `npm run watch` / `npm run watch:firefox` — development build (reload the extension manually to refresh content scripts)
-- `npm run lint` — ESLint (neostandard)
+- `npm run lint` — ESLint (neostandard); `npm run lint:firefox` — Mozilla add-on linter
+- `npm run package` — build and pack store-ready archives into `packages/`: Chrome `.zip`, Firefox `.zip` and the source `.zip` that addons.mozilla.org asks for (committed files only — commit first)
+- `npm run sign:firefox` — sign the Firefox build as unlisted (needs `WEB_EXT_API_KEY` / `WEB_EXT_API_SECRET`)
+
+The version lives in `source/manifest.json` (`YY.M.D`, same scheme as the original; the release workflow sets it from the daily tag).
 
 API proxy (optional, for your own server): see [proxy/README.md](proxy/README.md). Project overview for contributors: [CONTEXT.md](CONTEXT.md).
 

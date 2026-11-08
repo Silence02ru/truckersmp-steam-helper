@@ -3,7 +3,7 @@ const globals = require('globals')
 
 module.exports = [
   ...neostandard({
-    ignores: ['distribution/**', 'distribution-firefox/**', 'node_modules/**']
+    ignores: ['distribution/**', 'distribution-firefox/**', 'packages/**', 'node_modules/**']
   }),
   {
     files: ['source/**/*.js'],
@@ -15,7 +15,7 @@ module.exports = [
     }
   },
   {
-    files: ['proxy/**/*.mjs'],
+    files: ['proxy/**/*.mjs', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: globals.node
     }
