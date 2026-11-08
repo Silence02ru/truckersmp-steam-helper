@@ -1,0 +1,21 @@
+[Unit]
+Description=TruckersMP Steam Helper API proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/node /opt/truckersmp-proxy/server.mjs
+Environment=PORT=8787
+Environment=HOST=127.0.0.1
+Environment=CACHE_MINUTES=60
+Restart=always
+RestartSec=5
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

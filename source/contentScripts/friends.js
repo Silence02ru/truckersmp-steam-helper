@@ -47,17 +47,15 @@ const warningMessage = () => {
 }
 
 /**
- * Replace the warning with a Cloudflare check hint (TruckersMP API is blocking requests)
- * @param {String} steamId Any Steam ID to build the API page link
+ * Replace the warning with a hint (TruckersMP API is blocking requests with a Cloudflare check)
  */
-const blockedMessage = (steamId) => {
+const blockedMessage = () => {
   const warning = document.getElementById(WARNING_ID)
   if (!warning || warning.hasAttribute('data-blocked')) return
 
   warning.setAttribute('data-blocked', '')
-  warning.innerHTML = `<img src="${iconURL}" alt="Icon"> TruckersMP API asks for a Cloudflare security check. ` +
-    `<a href="https://api.truckersmp.com/v2/player/${steamId}" target="_blank" rel="noopener noreferrer">Open the API page</a>, ` +
-    'wait until the check passes, then reload this page.'
+  warning.innerHTML = `<img src="${iconURL}" alt="Icon"> TruckersMP API blocks requests from the extension (Cloudflare check). ` +
+    'Set an API proxy in the extension options.'
 }
 
 /**
@@ -94,7 +92,7 @@ const render = (mainSelector, targetSelector, template, key) => {
     if (playerInfo && playerInfo.data && !playerInfo.data.error) {
       player = playerInfo.data.response
     } else if (playerInfo?.data?.blocked) {
-      blockedMessage(steamId)
+      blockedMessage()
     }
 
     const blockContent = mainSelector.querySelector(targetSelector)

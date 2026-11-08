@@ -82,7 +82,7 @@ const queryPlayer = (steamId, options) => {
     // Return 'no profile' template no matter what
     return renderNoProfile(playerInfo?.games, options, {
       blocked: !!playerInfo?.data?.blocked,
-      checkURL: `https://api.truckersmp.com/v2/player/${steamId}`
+      reason: options.apiProxy ? playerInfo?.data?.descriptor : null
     })
   }).catch(error => console.error('TruckersMP Steam Helper:', error))
 }
@@ -93,7 +93,7 @@ const queryPlayer = (steamId, options) => {
  * @param {Object} options
  * @param {Object} status
  * @param {Boolean} status.blocked TruckersMP API returned a Cloudflare challenge
- * @param {String} status.checkURL URL to open to pass the challenge
+ * @param {?String} status.reason Proxy error (when a proxy is configured)
  */
 const renderNoProfile = (games, options, status = {}) => {
   const template = noProfileTemplate({

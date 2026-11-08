@@ -15,6 +15,12 @@ module.exports = [
     }
   },
   {
+    files: ['proxy/**/*.mjs'],
+    languageOptions: {
+      globals: globals.node
+    }
+  },
+  {
     files: ['webpack.config.js', 'eslint.config.js'],
     languageOptions: {
       sourceType: 'commonjs',

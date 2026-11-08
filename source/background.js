@@ -33,12 +33,10 @@ const delay = (key) => new Promise(resolve => setTimeout(resolve, key * 150 + Ma
  * @param {String} url
  * @returns {Promise<Object>}
  */
-const fetchJson = async (url) => {
+const fetchJson = async (url, init = {}) => {
   let response
   try {
-    // Send cookies: api.truckersmp.com is behind a Cloudflare challenge, and the
-    // clearance cookie the user gets after passing it in a tab must reach the API
-    response = await fetch(url, { credentials: 'include' })
+    response = await fetch(url, init)
   } catch (error) {
     console.warn('Request failed:', url, error)
     return { error: true, descriptor: `Network error: ${error.message}` }
@@ -56,6 +54,42 @@ const fetchJson = async (url) => {
 }
 
 /**
+ * Normalize proxy base URL from options ('' if not set or invalid)
+ * @param {String} value
+ * @returns {String}
+ */
+const proxyBase = (value) => {
+  try {
+    const url = new URL(String(value || '').trim())
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return ''
+    return url.href.replace(/\/+$/, '')
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Fetch player from TruckersMP API directly; if Cloudflare blocks it, retry via own proxy (if configured)
+ * @param {String} steamId
+ * @returns {Promise<Object>}
+ */
+const fetchPlayer = async (steamId) => {
+  const direct = await fetchJson(`https://api.truckersmp.com/v2/player/${steamId}`)
+  if (!direct?.blocked) return direct
+
+  const { apiProxy } = await optionsStorage.getAll()
+  const base = proxyBase(apiProxy)
+  if (!base) return direct
+
+  const proxied = await fetchJson(`${base}/v2/player/${steamId}`, { credentials: 'omit' })
+  if (proxied?.error && !proxied.response) {
+    // Proxy itself failed — keep the "blocked" flag so the UI can explain it
+    return { ...proxied, blocked: true, descriptor: `Proxy: ${proxied.descriptor}` }
+  }
+  return proxied
+}
+
+/**
  * Return TruckersMP player data
  * @param {Object} request Data object
  * @param {String} request.steamId Steam ID
@@ -68,7 +102,7 @@ const queryPlayer = async (request) => {
   const key = `player:${request.steamId}`
   const playerInfo = await readFromCache(key, async function () {
     await delay(request.key)
-    return fetchJson(`https://api.truckersmp.com/v2/player/${request.steamId}`)
+    return fetchPlayer(request.steamId)
   })
 
   // Check if the user is not registered

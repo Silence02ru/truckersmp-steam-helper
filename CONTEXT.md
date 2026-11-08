@@ -19,18 +19,25 @@
 | Файл | Назначение |
 |---|---|
 | `manifest.json` | MV3, общий исходник; ключ `background` перезаписывается при сборке под конкретный браузер (см. «Сборка»). Хосты в `host_permissions`. `web_accessible_resources` — `icons/tmp.png` для steamcommunity.com. Версия `0.0.0` подменяется в CI. |
-| `background.js` | Service worker. Обрабатывает сообщения `player` и `options` от content scripts. Запросы: TruckersMP API (`api.truckersmp.com/v2/player/<steamId>`), онлайн-статус (`traffic.krashnz.com/api/v2/user/<id>`), список игр Steam (`steamcommunity.com/profiles/<id>/games/?xml=1`, с `credentials: 'include'` — Steam отдаёт XML только залогиненным, иначе редирект на логин → `null`). `fetchJson` шлёт запросы с `credentials: 'include'` (нужно для cookie-допуска Cloudflare) и при сетевой ошибке или не-JSON-ответе возвращает `{ error: true, blocked, descriptor }`; `blocked: true` — пришла страница проверки Cloudflare «Just a moment», профиль пишет эту причину в консоль. Алярм `cache-cleanup` раз в минуту чистит просроченный кэш; при установке/обновлении кэш очищается. |
+| `background.js` | Service worker. Обрабатывает сообщения `player` и `options` от content scripts. Запросы: TruckersMP API (`api.truckersmp.com/v2/player/<steamId>`), онлайн-статус (`traffic.krashnz.com/api/v2/user/<id>`), список игр Steam (`steamcommunity.com/profiles/<id>/games/?xml=1`, с `credentials: 'include'` — Steam отдаёт XML только залогиненным, иначе редирект на логин → `null`). `fetchJson(url, init)` при сетевой ошибке или не-JSON-ответе возвращает `{ error: true, blocked, descriptor }`; `blocked: true` — пришла страница проверки Cloudflare «Just a moment». `fetchPlayer` сначала идёт в API напрямую, а при `blocked` — через свой прокси из настройки `apiProxy` (`<base>/v2/player/<steamId>`); если прокси не задан или упал, возвращается ошибка с `blocked: true`, профиль пишет эту причину в консоль. Алярм `cache-cleanup` раз в минуту чистит просроченный кэш; при установке/обновлении кэш очищается. |
 | `cache.js` | Кэш в `browser.storage.local` с префиксом `cache:` (в service worker нет `localStorage`). `readFromCache(key, cb, minutes)` — отдаёт запись, если она не истекла, иначе вызывает `cb`; `null`/`undefined` от `cb` не кэшируется. Также `removeFromCache`, `removeExpiredItems`, `clearCache` (удаляет только ключи `cache:`). |
-| `options-storage.js` | `webext-options-sync` (storage.sync): `showInProfile`, `showInFriends`, `showInInvites`, `showDiscord`, `showPatreon`, `friendsMaxWidth`. |
+| `options-storage.js` | `webext-options-sync` (storage.sync): `showInProfile`, `showInFriends`, `showInInvites`, `showDiscord`, `showPatreon`, `friendsMaxWidth`, `apiProxy` (адрес своего прокси API, пусто — выключено). |
 | `options.html/.js/.css` | Страница настроек. «Clear cache» чистит кэш напрямую через `cache.js` и пишет статус рядом со ссылкой. |
 | `contentScripts/profile.js` | Профиль Steam: ищет SteamID (модалка жалобы или `"steamid"` в inline-скриптах), рендерит `profile.hbs` или `noProfile.hbs` в `div.profile_leftcol`. Хелперы Handlebars `ifEquals`, `ifNotEligible` (≤2 ч). Не вставляет блок повторно. |
 | `contentScripts/friends.js` | Друзья/приглашения: рендерит `friend.hbs` / `invite.hbs` в каждый блок с `data-steamid`. Обработанные блоки помечаются атрибутом `data-tmp-helper` (страница друзей ajax — `MutationObserver` по смене URL перезапускает `init`, дублей нет). Предупреждение об API-лимитах вставляется один раз (`#tmp-helper-warning`). |
-| `templates/*.hbs` | Шаблоны блоков. |
+| `templates/*.hbs` | Шаблоны блоков. `noProfile.hbs` при `blocked` показывает «TruckersMP data is unavailable» и совет указать прокси (с причиной ошибки прокси, если он задан). |
 | `css/` | Стили профиля и друзей. |
 
 ## Объект игр (`games`)
 
 `{ ets2, ats, all, count }`: часы в ETS2 (appID 227300) / ATS (270880), `-1` = не найдено; `all` стартует с `-1` и суммирует часы (используется как признак приватности: `-1` → Private); `count` — число игр. Если список игр недоступен — `games = null`.
+
+## Прокси API (`proxy/`)
+
+Отдельно от расширения, ставится на свою VPS (инструкция — `proxy/README.md`).
+- `server.mjs` — Node.js 18+, без зависимостей. Только `GET /v2/player/7656119XXXXXXXXXX` (+ `OPTIONS`, `/health`), остальное 404/405. Кэш в памяти: 200 — `CACHE_MINUTES` (60), 404 — 10 мин; одновременные запросы одного игрока объединяются; не-JSON от апстрима → 502; CORS `*`; заголовок `X-Cache`. Env: `PORT` (8787), `HOST` (127.0.0.1).
+- `truckersmp-proxy.service` — systemd (`/opt/truckersmp-proxy/server.mjs`, DynamicUser, песочница).
+- `nginx.conf` — вариант A: HTTPS-фронт для `server.mjs`; вариант B (закомментирован): только nginx с `proxy_cache`.
 
 ## CI (`.github/workflows`)
 
@@ -39,7 +46,7 @@
 
 ## Известное
 
-- `api.truckersmp.com` закрыт проверкой Cloudflare: даже обычный браузер без cookie-допуска получает 403 «Just a moment». Пользователь проходит проверку сам, открыв страницу API во вкладке; дальше расширение отправляет полученный cookie. Пока допуска нет, `noProfile.hbs` (флаг `blocked`) и предупреждение в «Друзьях» показывают подсказку со ссылкой на страницу API. Автоматически проверку не проходим — это защита от ботов.
+- `api.truckersmp.com` закрыт проверкой Cloudflare: браузер (и расширение) получает 403 «Just a moment», серверные запросы с обычного IP проходят. Cookie-допуск `cf_clearance` Chrome хранит в отдельном разделе (CHIPS) и запросам расширения не отдаёт — поэтому «пройти проверку во вкладке» не помогает. Решение — свой прокси на VPS (`proxy/`). Публичные CORS-прокси (codetabs, allorigins, corsproxy.io и др.) на 2026-11-08 не работают: мертвы, платные или сами получают проверку.
 
 - `web-ext lint distribution-firefox`: 0 ошибок; предупреждения только про `insertAdjacentHTML` (контент — экранированный вывод Handlebars).
 - Для новых публикаций на AMO Mozilla требует `browser_specific_settings.gecko.data_collection_permissions` — пока не задано.

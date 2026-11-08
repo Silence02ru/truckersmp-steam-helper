@@ -7,7 +7,9 @@ export default new OptionsSync({
     showInInvites: true,
     showDiscord: true,
     showPatreon: true,
-    friendsMaxWidth: false
+    friendsMaxWidth: false,
+    // Own API proxy (see proxy/ folder), used when api.truckersmp.com returns a Cloudflare challenge
+    apiProxy: ''
   },
   migrations: [
     OptionsSync.migrations.removeUnused

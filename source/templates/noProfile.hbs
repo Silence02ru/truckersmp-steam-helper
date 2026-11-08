@@ -7,9 +7,9 @@
     {{#if blocked}}
       <div class="customtext_showcase">
         <div class="showcase_content_bg showcase_notes">
-          TruckersMP API asks for a Cloudflare security check.
-          <a href="{{ checkURL }}" target="_blank" rel="noopener noreferrer">Open the API page</a>,
-          wait until the check passes, then reload this page.
+          TruckersMP API blocks requests from the extension (Cloudflare check).
+          Set an API proxy in the extension options
+          ({{#if reason}}{{ reason }}{{else}}no proxy configured{{/if}}).
         </div>
       </div>
     {{/if}}

@@ -58,6 +58,20 @@
       </label>
     </div>
   </div>
+
+  <div class="content hr">
+    <h4>TruckersMP API proxy</h4>
+    <div>
+      <label>
+        Proxy URL
+        <input type="url" name="apiProxy" placeholder="https://tmp.example.com" autocomplete="off">
+      </label>
+      <small>
+        Used only when TruckersMP API blocks the extension with a Cloudflare check.
+        Requests go to <code>&lt;Proxy URL&gt;/v2/player/&lt;SteamID&gt;</code>. Leave empty to disable.
+      </small>
+    </div>
+  </div>
 </form>
 
 <div class="text-center">
