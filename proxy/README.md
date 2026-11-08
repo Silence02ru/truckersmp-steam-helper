@@ -61,6 +61,38 @@ sudo certbot --nginx -d ВАШ_ДОМЕН
 curl https://ВАШ_ДОМЕН/v2/player/76561198114078285
 ```
 
+## Вариант за прокси Cloudflare (скрыть IP сервера)
+
+Так развёрнут `tmp.silence24.ru`: DNS-запись проксируется Cloudflare (оранжевое облако), 443 на сервере занят другим сервисом, поэтому используется 8443 (Cloudflare проксирует HTTPS и на этом порту).
+
+1. Сертификат на сервере — самоподписанный (Let's Encrypt и порт 80 не нужны). В Cloudflare: SSL/TLS → режим **Full** (для **Full (strict)** вместо него поставить Cloudflare Origin Certificate).
+   ```bash
+   sudo mkdir -p /etc/nginx/ssl
+   sudo openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -subj "/CN=ВАШ_ДОМЕН" -addext "subjectAltName=DNS:ВАШ_ДОМЕН" -keyout /etc/nginx/ssl/tmp-proxy.key -out /etc/nginx/ssl/tmp-proxy.crt
+   ```
+2. nginx: `listen 8443 ssl;` с этим сертификатом и `proxy_pass http://127.0.0.1:8787;`, на 80 ничего не слушать.
+3. Порт 8443 открыть **только для IP Cloudflare**, иначе сканеры найдут по сертификату связь домена с IP. Скрипт nftables (отдельная таблица, не мешает Docker):
+   ```bash
+   V4=$(curl -fsS https://www.cloudflare.com/ips-v4 | paste -sd,); V6=$(curl -fsS https://www.cloudflare.com/ips-v6 | paste -sd,)
+   cat > /etc/truckersmp-proxy.nft <<EOF
+   table inet truckersmp_proxy
+   delete table inet truckersmp_proxy
+   table inet truckersmp_proxy {
+     set cf4 { type ipv4_addr; flags interval; elements = { $V4 } }
+     set cf6 { type ipv6_addr; flags interval; elements = { $V6 } }
+     chain input {
+       type filter hook input priority -10; policy accept;
+       tcp dport 8443 ip saddr @cf4 accept
+       tcp dport 8443 ip6 saddr @cf6 accept
+       tcp dport 8443 drop
+     }
+   }
+   EOF
+   nft -f /etc/truckersmp-proxy.nft
+   ```
+   Для автозагрузки — systemd oneshot `ExecStart=/usr/sbin/nft -f /etc/truckersmp-proxy.nft` (на сервере: `truckersmp-proxy-firewall.service`). Список IP Cloudflare меняется редко; при изменении — перезапустить скрипт.
+4. Если в зоне Cloudflare включён Bot Fight Mode / Under Attack и запросы расширения начнут получать проверку — добавьте WAF-правило «Skip» для `tmp.ВАШ_ДОМЕН` и пути `/v2/player/`.
+
 ## Подключение к расширению
 
 Настройки расширения → «TruckersMP API proxy» → `https://ВАШ_ДОМЕН` (без `/v2/...` и без слеша на конце).

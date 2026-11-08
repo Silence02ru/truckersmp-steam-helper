@@ -9,7 +9,7 @@ export default new OptionsSync({
     showPatreon: true,
     friendsMaxWidth: false,
     // Own API proxy (see proxy/ folder), used when api.truckersmp.com returns a Cloudflare challenge
-    apiProxy: ''
+    apiProxy: 'https://tmp.silence24.ru:8443'
   },
   migrations: [
     OptionsSync.migrations.removeUnused
